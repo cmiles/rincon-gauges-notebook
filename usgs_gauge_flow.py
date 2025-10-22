@@ -160,90 +160,116 @@ def _(day_data, guage_end_date, guage_start_date, pd):
 
 @app.cell
 def _(mo, month_data, pd):
+    import numpy as np
     import plotly.graph_objects as go
-    import plotly.io as pio
 
-    pio.renderers[pio.renderers.default].config['displayModeBar'] = False
-
-    # --- data prep ---
+    # --- use month_data directly ---
     df = month_data.copy()
     df["month_date_time"] = pd.to_datetime(df["month_date_time"])
-    df["year"] = df["month_date_time"].dt.year
+    df["year"]  = df["month_date_time"].dt.year
     df["month"] = df["month_date_time"].dt.month
 
     years = sorted(df["year"].unique())
-    month_labels = ["Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec"]
 
-    FACET_W = 90
-    FACET_H = 70
+    FACET_W   = 90
+    FACET_H   = 70
     LINE_COLOR = "#3366cc"
 
+    def _nanmax0(a):
+        """nan-safe max -> 0 when all NaN/empty"""
+        try:
+            m = np.nanmax(a)
+            return 0 if np.isnan(m) else float(m)
+        except ValueError:  # empty
+            return 0
+
     def tiny_fig(year: int) -> go.Figure:
-        g = df[df["year"] == year].sort_values("month")
+        g = df[df["year"] == year].sort_values("month").copy()
 
-        # mask flow when no data (optional; keep if you used it earlier)
-        g["flow_masked"] = g["days_with_flow"].where(g["days_with_data"] > 0, None)
+        # bars should show 0 for missing months
+        g["days_with_data"] = g["days_with_data"].fillna(0)
 
-        # --- 1) add headroom so the top of the line isn't clipped ---
-        ymax = max(31, float(g["days_with_data"].max() or 0), float(g["days_with_flow"].max() or 0))
-        y_top = ymax + 0.6  # small padding; you can use 31.5 if you always cap at 31
+        # line hidden where there is no data that month
+        # keep actual flow values where data exists; otherwise None breaks the line
+        flow_vals = g["days_with_flow"].to_numpy(dtype=float)
+        flow_vals = np.where(g["days_with_data"].to_numpy() > 0, flow_vals, np.nan)
+        flow_vals = np.where(np.isnan(flow_vals), None, flow_vals)  # Plotly wants None to break lines
+
+        # safe headroom; base at 0
+        ymax_data = _nanmax0(g["days_with_data"].to_numpy(dtype=float))
+        ymax_flow = _nanmax0(g["days_with_flow"].to_numpy(dtype=float))
+        y_top = max(31.0, ymax_data, ymax_flow) + 0.6
 
         fig = go.Figure()
 
         # bars
         fig.add_bar(
-            x=[month_labels[m-1] for m in g["month"]],
+            x=g["month"],  # 1..12, ticks hidden anyway
             y=g["days_with_data"],
             marker_color="rgba(200,200,200,0.4)",
             showlegend=False,
-            hoverinfo="skip",         
+            hoverinfo="skip",
             hovertemplate=None
         )
 
-        # line (no markers)
+        # line (slightly thinner)
         fig.add_scatter(
-            x=[month_labels[m-1] for m in g["month"]],
-            y=g["flow_masked"], 
+            x=g["month"],
+            y=flow_vals,
             mode="lines",
-            line=dict(color=LINE_COLOR, width=1.5),  # 3) slightly thinner helps on tiny charts
+            line=dict(color=LINE_COLOR, width=2),
             showlegend=False,
             connectgaps=False,
-            hoverinfo="skip",         
+            hoverinfo="skip",
             hovertemplate=None
         )
 
         fig.update_xaxes(showticklabels=False, ticks="")
         fig.update_yaxes(showticklabels=False, range=[0, y_top])
 
-        # 2) give the title a bit more breathing room from the plot
+        # layout; use annotation for the year label to avoid title quirks
         fig.update_layout(
             width=FACET_W,
             height=FACET_H,
-            margin=dict(t=10, r=0, b=2, l=0),  # was 22
+            margin=dict(t=10, r=0, b=2, l=0),
             template="plotly_white",
-            title=dict(
-                text=str(year),
-                x=0.00,
-                y=1.00,                  # was 0.98
-                xanchor="left",
-                yanchor="top",
-                font=dict(size=10, color="rgba(0,0,0,0.3)"),
-            ),
+            bargap=0.2,
+            annotations=[
+                dict(
+                    x=0.0, y=1.2,                  # ← move higher above bars
+                    xref="paper", yref="paper",
+                    text=str(year),
+                    showarrow=False,
+                    xanchor="left", yanchor="top",
+                    font=dict(size=9,              # ← slightly larger
+                              color="rgba(0,0,0,0.3)")
+                )
+            ],
         )
+
         return fig
 
     # build figures for all years
     figs = [tiny_fig(y) for y in years]
 
+    # static, no interactivity
+    static_config = {
+        "staticPlot": True,
+        "displayModeBar": False,
+        "displaylogo": False,
+    }
+
+    tiles = [mo.ui.plotly(f, config=static_config) for f in figs]
+
     mo.md(
         f"""
         <h2 style="text-align:center;">Days of Flow</h2>
         <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
-        <div style="display:flex; flex-wrap:wrap; column-gap:2px; row-gap:18px; align-items:flex-start;">
-          {"".join(f"<div>{mo.as_html(f)}</div>" for f in figs)}
+        <div style="display:flex; flex-wrap:wrap; column-gap:2px; row-gap:12px; align-items:flex-start;">
+          {"".join(f"<div>{p}</div>" for p in tiles)}
         </div>
-        """)
+        """
+    )
 
     return
 
@@ -303,7 +329,6 @@ def _(day_data, mo, pd):
             {mo.as_html(fig_full)}
           </div>
     """)
-
     return
 
 
