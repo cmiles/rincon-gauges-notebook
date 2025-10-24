@@ -271,6 +271,7 @@ def _(mo, month_data):
         <div style="display:flex; flex-wrap:wrap; column-gap:2px; row-gap:12px; align-items:flex-start;">
           {"".join(f"<div>{p}</div>" for p in tiles)}
         </div>
+        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
         """
     )
     return go, np, years
@@ -323,7 +324,7 @@ def _(go, mo, month_data, month_numbers, np, years):
                 "Month: %{x}<br>"
                 "max_mean_flow: %{text}<extra></extra>"
             ),
-            colorbar=dict(title="log₁₀(max_mean_flow)"),
+            colorbar=dict(title="log₁₀"),
             showscale=True,
             hoverongaps=False
         )
@@ -335,7 +336,7 @@ def _(go, mo, month_data, month_numbers, np, years):
     total_height = max(400, num_years * row_height)
 
     fig.update_layout(
-        title="Max Daily Mean Flow by Year and Month",
+        title="",
         xaxis=dict(title="", fixedrange=True, showgrid=False),
         yaxis=dict(
             title="",
@@ -346,13 +347,13 @@ def _(go, mo, month_data, month_numbers, np, years):
             tickvals=mmf.index,
             ticktext=mmf.index.astype(str),
         ),
-        margin=dict(l=10, r=10, t=40, b=10),
+        margin=dict(l=4, r=4, t=10, b=10),
         height=total_height,
         paper_bgcolor="white",  # background behind NaN tiles
         plot_bgcolor="white",
     )
 
-    mo.ui.plotly(
+    heat_map_tile = mo.ui.plotly(
         fig,
         config={
             "displayModeBar": False,
@@ -360,6 +361,16 @@ def _(go, mo, month_data, month_numbers, np, years):
             "doubleClick": False,
             "staticPlot": True# tooltips only
         },
+    )
+
+    mo.md(
+        f"""
+        <h2 style="text-align:center;">Max Daily Mean Flow by Year and Month</h2>
+        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
+        {heat_map_tile}
+        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
+        </div>
+        """
     )
 
     return
