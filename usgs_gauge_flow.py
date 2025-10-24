@@ -1,22 +1,22 @@
 import marimo
 
 __generated_with = "0.17.0"
-app = marimo.App(width="medium")
+app = marimo.App(width="full", app_title="Rincon Valley USGS Gauges")
 
 
 @app.cell
 def _(mo):
     mo.md(
         r"""
-    ## Great Rincon Valley Area USGS Stream Guages
+    ## Great Rincon Valley Area USGS Stream Gauges
 
-    There are three USGS Stream guages relevant for the Rincon Valley. This notebook shows two different stats:
+    There are three USGS Stream gauges relevant for the Rincon Valley. This notebook shows two different stats:
      - Days of Flow: For a frequently dry stream and often low flow streams like Rincon Creek the Days of Flow is the closest metric to answering the main question 'is there water'. This is shown as small multiples - it is interesting to see similiar years or groups of years.
      - Mean Flow: For stream with steady flow the mean flow is more interesting that 'Days of Flow'. Two of the same chart are shown to make it easier to look at a variety of comparisons. The Y axis is logarythmic since the streams in the Rincon Valley area are generally low flow. 
 
     Changing the dropdown below will show data for the selected guage.
 
-    [This link](https://maps.waterdata.usgs.gov/mapper/index.html) will take you to the National Water Information System 'Mapper' where you can zoom in and easily find guages:
+    [This link](https://maps.waterdata.usgs.gov/mapper/index.html) will take you to the National Water Information System 'Mapper' where you can zoom in and easily find gauges:
       - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - located west of the X9 on Rincon Creek this guage has data back into the 1950s and considering the area of Rincon Creek that is easily accessible today (ie the Arizona Trail crossing east of the Comino Loma Alta trailhead) is the best indication of 'is the creek flowing'
       - [USGS 09484600 PANTANO WASH NEAR VAIL, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484600) - West of the areas that I believe most hikers use in Cienega Creek - this guage may be misleading since as you hike east into Cienega Creek there is often surface water even if it is only dry sand at the bridge
       - [USGS 09484550 CIENEGA CREEK NEAR SONOITA, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484550) - far south of the Rincon Valley portion of Cienega Creek but still interesting
@@ -94,12 +94,12 @@ def _(guage_data, pd):
                     "qualifiers": quals_str
                 })
 
-        df = pd.DataFrame(rows)
-        if not df.empty:
-            df["dateTime"] = pd.to_datetime(df["dateTime"], errors="coerce")
-            df["value"] = pd.to_numeric(df["value"], errors="coerce")
-            df = df.sort_values("dateTime").reset_index(drop=True)
-        return df
+        month_data = pd.DataFrame(rows)
+        if not month_data.empty:
+            month_data["dateTime"] = pd.to_datetime(month_data["dateTime"], errors="coerce")
+            month_data["value"] = pd.to_numeric(month_data["value"], errors="coerce")
+            month_data = month_data.sort_values("dateTime").reset_index(drop=True)
+        return month_data
 
     guage_values = flatten_usgs_daily(guage_data)
 
@@ -150,26 +150,29 @@ def _(day_data, guage_end_date, guage_start_date, pd):
 
     month_day_grouped = day_data.groupby('month_date_time').agg(
         days_with_data=('has_data', 'sum'),
-        days_with_flow=('has_flow', 'sum'))
+        days_with_flow=('has_flow', 'sum'),
+        max_mean_flow=('mean_flow', 'max'))
 
     month_data = month_data.merge(month_day_grouped, how='left', on='month_date_time')
 
+    month_data['max_mean_flow'] = month_data['max_mean_flow'].fillna(0)
+    month_data['days_with_data'] = month_data['days_with_data'].fillna(0).astype(int)
+
+    month_data["year"]  = month_data["month_date_time"].dt.year
+    month_data["month"] = month_data["month_date_time"].dt.month
+
+    month_numbers = range(1, 13)
+
     month_data
-    return (month_data,)
+    return month_data, month_numbers
 
 
 @app.cell
-def _(mo, month_data, pd):
+def _(mo, month_data):
     import numpy as np
     import plotly.graph_objects as go
 
-    # --- use month_data directly ---
-    df = month_data.copy()
-    df["month_date_time"] = pd.to_datetime(df["month_date_time"])
-    df["year"]  = df["month_date_time"].dt.year
-    df["month"] = df["month_date_time"].dt.month
-
-    years = sorted(df["year"].unique())
+    years = sorted(month_data["year"].unique())
 
     FACET_W   = 90
     FACET_H   = 70
@@ -184,7 +187,7 @@ def _(mo, month_data, pd):
             return 0
 
     def tiny_fig(year: int) -> go.Figure:
-        g = df[df["year"] == year].sort_values("month").copy()
+        g = month_data[month_data["year"] == year].sort_values("month").copy()
 
         # bars should show 0 for missing months
         g["days_with_data"] = g["days_with_data"].fillna(0)
@@ -270,65 +273,100 @@ def _(mo, month_data, pd):
         </div>
         """
     )
+    return go, np, years
+
+
+@app.cell
+def _(go, mo, month_data, month_numbers, np, years):
+    pivot = (
+        month_data.pivot_table(
+            index="year",
+            columns="month",
+            values=["max_mean_flow", "days_with_data"],
+            aggfunc={"max_mean_flow": "mean", "days_with_data": "sum"},
+        )
+        .reindex(index=years)  # keep years in desired order
+        .reindex(columns=month_numbers, level="month")  # ensure months 1..12
+    )
+
+    mmf = pivot["max_mean_flow"]
+    dwd = pivot["days_with_data"]
+
+    mmf_vals = mmf.to_numpy(dtype=float)
+    dwd_vals = dwd.to_numpy(dtype=float)
+
+    # --- Mask only for truly "no data" cells ---
+    no_data_mask = (dwd_vals == 0) | np.isnan(dwd_vals)
+
+    mmf_for_log = mmf + 1
+    z_logged = np.log10(mmf_for_log)
+
+    # Then mask only no-data cells in z_logged so Plotly leaves them transparent
+    z_logged_masked = np.where(no_data_mask, np.nan, z_logged)
+
+    # --- Hover text ---
+    heat_hover_text = np.empty_like(mmf_vals, dtype=object)
+    heat_hover_text[no_data_mask] = "No Data"
+    heat_hover_text[~no_data_mask] = np.char.mod("%.2f", mmf_vals[~no_data_mask])
+
+    month_labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=z_logged_masked,
+            x=month_labels,
+            y=mmf.index.astype(str),
+            colorscale="PuBu",
+            text=heat_hover_text,
+            hovertemplate=(
+                "Year: %{y}<br>"
+                "Month: %{x}<br>"
+                "max_mean_flow: %{text}<extra></extra>"
+            ),
+            colorbar=dict(title="log₁₀(max_mean_flow)"),
+            showscale=True,
+            hoverongaps=False
+        )
+    )
+
+    # Make NaN (no data) cells render as white by using a white plot background
+    num_years = len(mmf.index)
+    row_height = 20
+    total_height = max(400, num_years * row_height)
+
+    fig.update_layout(
+        title="Max Daily Mean Flow by Year and Month",
+        xaxis=dict(title="", fixedrange=True, showgrid=False),
+        yaxis=dict(
+            title="",
+            autorange="reversed",
+            fixedrange=True,
+            showgrid=False,
+            tickmode="array",
+            tickvals=mmf.index,
+            ticktext=mmf.index.astype(str),
+        ),
+        margin=dict(l=10, r=10, t=40, b=10),
+        height=total_height,
+        paper_bgcolor="white",  # background behind NaN tiles
+        plot_bgcolor="white",
+    )
+
+    mo.ui.plotly(
+        fig,
+        config={
+            "displayModeBar": False,
+            "scrollZoom": False,
+            "doubleClick": False,
+            "staticPlot": True# tooltips only
+        },
+    )
 
     return
 
 
 @app.cell
-def _(day_data, mo, pd):
-    import plotly.express as px
-
-    # --- Ensure datetime column ---
-    day_data['dateTime'] = pd.to_datetime(day_data['dateTime'])
-    day_data['year'] = day_data['dateTime'].dt.year
-
-    # --- Base figure config as a helper function ---
-    def make_flow_chart(start_date, end_date, title_suffix=""):
-        fig = px.line(
-            day_data,
-            x='dateTime',
-            y='mean_flow',
-            color='year',
-            title=None,
-            template="plotly_white"
-        )
-        fig.update_layout(
-            autosize=True,
-            height=500,
-            xaxis_title="Date",
-            yaxis_title="Mean Flow",
-            showlegend=False,
-            margin=dict(l=50, r=50, t=8, b=50),
-        )
-        fig.update_xaxes(
-            rangeslider_visible=True,
-            range=[start_date, end_date]
-        )
-        fig.update_yaxes(type='log')
-        return fig
-
-    # --- Create two versions ---
-    fig_recent = make_flow_chart(
-        day_data['dateTime'].max() - pd.Timedelta(days=5*364),
-        day_data['dateTime'].max()
-    )
-    fig_full = make_flow_chart(
-        day_data['dateTime'].max() - pd.Timedelta(days=5*364*2),
-        day_data['dateTime'].max() - pd.Timedelta(days=5*364)
-    )
-
-    # --- Display both in Marimo Markdown ---
-    mo.md(f"""
-    <h2 style="text-align:center;">Mean Flow</h2>
-        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
-          <div>
-            {mo.as_html(fig_recent)}
-          </div>
-        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
-          <div>
-            {mo.as_html(fig_full)}
-          </div>
-    """)
+def _():
     return
 
 
