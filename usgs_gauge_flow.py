@@ -186,8 +186,6 @@ def _(day_data, np):
         ).reindex(np.arange(1, 13), fill_value=np.nan)  # ensure 1..12 present
                 .rename_axis('month')
                 .reset_index())
-
-    month_summary_data.columns
     return (month_summary_data,)
 
 
@@ -385,12 +383,11 @@ def _(go, mo, month_data, month_numbers, np, years):
         <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
         """
     )
-
     return
 
 
 @app.cell
-def _(df, go, month_summary_data, np, pd):
+def _(go, month_summary_data, np, pd):
     def monthly_flow_band_linear(
         month_summary_data: pd.DataFrame,
         y_title="Flow (cfs)",
@@ -399,7 +396,7 @@ def _(df, go, month_summary_data, np, pd):
         # --- Keep only needed columns and ensure months 1–12 ---
         cols = ["month", "median_flow",
                 "twenty_five_quantile_flow", "seventy_five_quantile_flow"]
-        day_data = month_summary_data[cols].copy()
+        df = month_summary_data[cols].copy()
         df["month"] = df["month"].astype(int)
         month_index = pd.Index(np.arange(1, 13), name="month")
         df = df.set_index("month").reindex(month_index).reset_index()
@@ -463,7 +460,6 @@ def _(df, go, month_summary_data, np, pd):
 
     montly_flow_fig = monthly_flow_band_linear(month_summary_data)
     montly_flow_fig.show()
-
     return
 
 
@@ -609,8 +605,7 @@ def _(day_data, mo, np, pd):
 
     # In Marimo:
     mo.md(html)
-
-    return (df,)
+    return
 
 
 if __name__ == "__main__":
