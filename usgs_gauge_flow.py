@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.17.0"
+__generated_with = "0.17.2"
 app = marimo.App(width="full", app_title="Rincon Valley USGS Gauges")
 
 
@@ -8,17 +8,17 @@ app = marimo.App(width="full", app_title="Rincon Valley USGS Gauges")
 def _(mo):
     mo.md(
         r"""
-    ## Great Rincon Valley Area USGS Stream Gauges
+    ## Greater Rincon Valley Area USGS Stream Gauges
 
     There are three USGS Stream gauges relevant for the Rincon Valley. This notebook shows two different stats:
      - Days of Flow: For a frequently dry stream and often low flow streams like Rincon Creek the Days of Flow is the closest metric to answering the main question 'is there water'. This is shown as small multiples - it is interesting to see similiar years or groups of years.
      - Mean Flow: For stream with steady flow the mean flow is more interesting that 'Days of Flow'. Two of the same chart are shown to make it easier to look at a variety of comparisons. The Y axis is logarythmic since the streams in the Rincon Valley area are generally low flow. 
 
-    Changing the dropdown below will show data for the selected guage.
+    Changing the dropdown below will show data for the selected gauge.
 
     [This link](https://maps.waterdata.usgs.gov/mapper/index.html) will take you to the National Water Information System 'Mapper' where you can zoom in and easily find gauges:
-      - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - located west of the X9 on Rincon Creek this guage has data back into the 1950s and considering the area of Rincon Creek that is easily accessible today (ie the Arizona Trail crossing east of the Comino Loma Alta trailhead) is the best indication of 'is the creek flowing'
-      - [USGS 09484600 PANTANO WASH NEAR VAIL, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484600) - West of the areas that I believe most hikers use in Cienega Creek - this guage may be misleading since as you hike east into Cienega Creek there is often surface water even if it is only dry sand at the bridge
+      - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - located west of the X9 on Rincon Creek this gauge has data back into the 1950s and considering the area of Rincon Creek that is easily accessible today (ie the Arizona Trail crossing east of the Comino Loma Alta trailhead) is the best indication of 'is the creek flowing'
+      - [USGS 09484600 PANTANO WASH NEAR VAIL, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484600) - West of the areas that I believe most hikers use in Cienega Creek - this gauge may be misleading since as you hike east into Cienega Creek there is often surface water even if it is only dry sand at the bridge
       - [USGS 09484550 CIENEGA CREEK NEAR SONOITA, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484550) - far south of the Rincon Valley portion of Cienega Creek but still interesting
 
     The [Water Services Web](https://waterservices.usgs.gov/) page provides an overview of the data services available to retrieve data. Data in this report is from the Daily Values Service - [Daily Values Service Documentation](https://waterservices.usgs.gov/docs/dv-service/daily-values-service-details/), [Water Services URL Generation Tool](https://waterservices.usgs.gov/test-tools/?service=stat&siteType=&statTypeCd=all&major-filters=sites&format=rdb&date-type=type-period&statReportType=daily&statYearType=calendar&missingData=off&siteStatus=all&siteNameMatchOperator=start).
@@ -54,7 +54,7 @@ def _(mo, requests, site_dropdown):
     selected_label = site_dropdown.value
     site_id = selected_label[-8:]  # parse last 8 characters
 
-    guage_url = "https://waterservices.usgs.gov/nwis/dv/"
+    gauge_url = "https://waterservices.usgs.gov/nwis/dv/"
     params = {
         "format": "json",
         "sites": site_id,
@@ -62,15 +62,15 @@ def _(mo, requests, site_dropdown):
         "siteStatus": "all"
     }
 
-    guage_response = requests.get(guage_url, params=params)
-    guage_data = guage_response.json()
+    gauge_response = requests.get(gauge_url, params=params)
+    gauge_data = gauge_response.json()
 
     mo.md(f"Fetched data for **{selected_label}** (site ID: `{site_id}`)")
-    return (guage_data,)
+    return (gauge_data,)
 
 
 @app.cell
-def _(guage_data, pd):
+def _(gauge_data, pd):
     def flatten_usgs_daily(data):
         rows = []
         for ts in data["value"]["timeSeries"]:
@@ -101,30 +101,30 @@ def _(guage_data, pd):
             month_data = month_data.sort_values("dateTime").reset_index(drop=True)
         return month_data
 
-    guage_values = flatten_usgs_daily(guage_data)
+    gauge_values = flatten_usgs_daily(gauge_data)
 
-    assert not (guage_values['dateTime'].dt.floor('D') != guage_values['dateTime']).any(), \
+    assert not (gauge_values['dateTime'].dt.floor('D') != gauge_values['dateTime']).any(), \
         "Error: Some datetimes have non-zero time components"
 
-    guage_values
-    return (guage_values,)
+    gauge_values
+    return (gauge_values,)
 
 
 @app.cell
-def _(date, guage_values, pd):
-    guage_start_date = date(guage_values["dateTime"].min().year + 1, 1, 1)
-    guage_end_date = date(date.today().year, 12, 31)
+def _(date, gauge_values, pd):
+    gauge_start_date = date(gauge_values["dateTime"].min().year + 1, 1, 1)
+    gauge_end_date = date(date.today().year, 12, 31)
 
-    day_frame = pd.date_range(start=guage_start_date, end=guage_end_date, freq='D')
+    day_frame = pd.date_range(start=gauge_start_date, end=gauge_end_date, freq='D')
 
     day_data = pd.DataFrame(index=day_frame)
     day_data = day_data.reset_index().rename(columns={"index": "dateTime"})
 
-    grouped_guage_days = guage_values.groupby('dateTime').agg(has_flow=('value', lambda x: (x > 0).any()), mean_flow=('value', 'mean'))
-    grouped_guage_days['has_data'] = True
-    grouped_guage_days.reset_index(inplace=True)
+    grouped_gauge_days = gauge_values.groupby('dateTime').agg(has_flow=('value', lambda x: (x > 0).any()), mean_flow=('value', 'mean'))
+    grouped_gauge_days['has_data'] = True
+    grouped_gauge_days.reset_index(inplace=True)
 
-    day_data = day_data.merge(grouped_guage_days, how='left', on='dateTime')
+    day_data = day_data.merge(grouped_gauge_days, how='left', on='dateTime')
 
     day_data['year'] = day_data['dateTime'].dt.year
     day_data['month'] = day_data['dateTime'].dt.month
@@ -136,14 +136,19 @@ def _(date, guage_values, pd):
     day_data['has_flow'] = day_data['has_flow'].fillna(False)
 
     day_data['month_date_time'] = day_data['dateTime'].values.astype('datetime64[M]')
+    day_data['year_date_time'] = day_data['dateTime'].values.astype('datetime64[Y]')
+
+    day_data.sort_values('dateTime', inplace=True)
 
     day_data
-    return day_data, guage_end_date, guage_start_date
+    return day_data, gauge_end_date, gauge_start_date
 
 
 @app.cell
-def _(day_data, guage_end_date, guage_start_date, pd):
-    month_frame = pd.date_range(start=guage_start_date, end=guage_end_date, freq='MS')
+def _(day_data, gauge_end_date, gauge_start_date, pd):
+    import numpy as np
+
+    month_frame = pd.date_range(start=gauge_start_date, end=gauge_end_date, freq='MS')
 
     month_data = pd.DataFrame(index=month_frame)
     month_data = month_data.reset_index().rename(columns={"index": "month_date_time"})
@@ -151,7 +156,11 @@ def _(day_data, guage_end_date, guage_start_date, pd):
     month_day_grouped = day_data.groupby('month_date_time').agg(
         days_with_data=('has_data', 'sum'),
         days_with_flow=('has_flow', 'sum'),
-        max_mean_flow=('mean_flow', 'max'))
+        max_mean_flow=('mean_flow', lambda x: np.max(x) if len(x) else np.nan),
+        mean_flow=('mean_flow', lambda x: np.mean(x) if len(x) else np.nan),
+        twenty_five_quantile_flow=('mean_flow', lambda x: np.quantile(x, 0.25) if len(x) else np.nan),
+        seventy_five_quantile_flow=('mean_flow', lambda x: np.quantile(x, 0.75) if len(x) else np.nan),
+    ).reset_index()
 
     month_data = month_data.merge(month_day_grouped, how='left', on='month_date_time')
 
@@ -164,12 +173,27 @@ def _(day_data, guage_end_date, guage_start_date, pd):
     month_numbers = range(1, 13)
 
     month_data
-    return month_data, month_numbers
+    return month_data, month_numbers, np
 
 
 @app.cell
-def _(mo, month_data):
-    import numpy as np
+def _(day_data, np):
+    month_summary_data = (day_data.query('has_data').groupby('month').agg(
+        max_mean_flow=('mean_flow', 'max'),
+        median_flow=('mean_flow', 'median'),
+        twenty_five_quantile_flow=('mean_flow', lambda x: np.quantile(x, 0.25)),
+        seventy_five_quantile_flow=('mean_flow', lambda x: np.quantile(x, 0.75)),
+        ).reindex(np.arange(1, 13), fill_value=np.nan)  # ensure 1..12 present
+                .rename_axis('month')
+                .reset_index())
+
+    month_summary_data.columns
+    return (month_summary_data,)
+
+
+@app.cell
+def _(mo, month_data, np):
+
     import plotly.graph_objects as go
 
     years = sorted(month_data["year"].unique())
@@ -274,51 +298,42 @@ def _(mo, month_data):
         <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
         """
     )
-    return go, np, years
+    return go, years
 
 
 @app.cell
 def _(go, mo, month_data, month_numbers, np, years):
-    pivot = (
+    # --- Pivot just what you need ---
+    mmf = (
         month_data.pivot_table(
             index="year",
             columns="month",
-            values=["max_mean_flow", "days_with_data"],
-            aggfunc={"max_mean_flow": "mean", "days_with_data": "sum"},
+            values="max_mean_flow",
+            aggfunc="mean",
         )
-        .reindex(index=years)  # keep years in desired order
-        .reindex(columns=month_numbers, level="month")  # ensure months 1..12
+        .reindex(index=years)                       # keep years in desired order
+        .reindex(columns=month_numbers)             # ensure months 1..12
     )
 
-    mmf = pivot["max_mean_flow"]
-    dwd = pivot["days_with_data"]
+    # --- Log transform; NaNs stay NaN and will render as gaps/transparent ---
+    z_logged = np.log10(mmf + 1)
 
-    mmf_vals = mmf.to_numpy(dtype=float)
-    dwd_vals = dwd.to_numpy(dtype=float)
-
-    # --- Mask only for truly "no data" cells ---
-    no_data_mask = (dwd_vals == 0) | np.isnan(dwd_vals)
-
-    mmf_for_log = mmf + 1
-    z_logged = np.log10(mmf_for_log)
-
-    # Then mask only no-data cells in z_logged so Plotly leaves them transparent
-    z_logged_masked = np.where(no_data_mask, np.nan, z_logged)
-
-    # --- Hover text ---
-    heat_hover_text = np.empty_like(mmf_vals, dtype=object)
-    heat_hover_text[no_data_mask] = "No Data"
-    heat_hover_text[~no_data_mask] = np.char.mod("%.2f", mmf_vals[~no_data_mask])
+    # --- Hover text: "No Data" for NaN, else value with 2 decimals ---
+    heat_hover_text = (
+        mmf.round(2)
+           .astype(object)                          # allow mixing floats and strings
+           .where(~mmf.isna(), "No Data")
+    )
 
     month_labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
     fig = go.Figure(
         data=go.Heatmap(
-            z=z_logged_masked,
+            z=z_logged.to_numpy(),
             x=month_labels,
             y=mmf.index.astype(str),
             colorscale="PuBu",
-            text=heat_hover_text,
+            text=heat_hover_text.to_numpy(),
             hovertemplate=(
                 "Year: %{y}<br>"
                 "Month: %{x}<br>"
@@ -330,10 +345,9 @@ def _(go, mo, month_data, month_numbers, np, years):
         )
     )
 
-    # Make NaN (no data) cells render as white by using a white plot background
-    num_years = len(mmf.index)
+    # Size per year for mobile
     row_height = 20
-    total_height = max(400, num_years * row_height)
+    total_height = max(400, len(mmf.index) * row_height)
 
     fig.update_layout(
         title="",
@@ -349,7 +363,7 @@ def _(go, mo, month_data, month_numbers, np, years):
         ),
         margin=dict(l=4, r=4, t=10, b=10),
         height=total_height,
-        paper_bgcolor="white",  # background behind NaN tiles
+        paper_bgcolor="white",
         plot_bgcolor="white",
     )
 
@@ -359,7 +373,7 @@ def _(go, mo, month_data, month_numbers, np, years):
             "displayModeBar": False,
             "scrollZoom": False,
             "doubleClick": False,
-            "staticPlot": True# tooltips only
+            "staticPlot": True  # tooltips only
         },
     )
 
@@ -369,7 +383,6 @@ def _(go, mo, month_data, month_numbers, np, years):
         <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
         {heat_map_tile}
         <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
-        </div>
         """
     )
 
@@ -377,8 +390,227 @@ def _(go, mo, month_data, month_numbers, np, years):
 
 
 @app.cell
-def _():
+def _(df, go, month_summary_data, np, pd):
+    def monthly_flow_band_linear(
+        month_summary_data: pd.DataFrame,
+        y_title="Flow (cfs)",
+        title="Monthly Flow — Median with 25–75% Band"
+    ):
+        # --- Keep only needed columns and ensure months 1–12 ---
+        cols = ["month", "median_flow",
+                "twenty_five_quantile_flow", "seventy_five_quantile_flow"]
+        day_data = month_summary_data[cols].copy()
+        df["month"] = df["month"].astype(int)
+        month_index = pd.Index(np.arange(1, 13), name="month")
+        df = df.set_index("month").reindex(month_index).reset_index()
+
+        # --- Handle swapped quantiles (rare but safe check) ---
+        q25 = df["twenty_five_quantile_flow"].to_numpy(dtype=float)
+        q75 = df["seventy_five_quantile_flow"].to_numpy(dtype=float)
+        swap_mask = q25 > q75
+        if np.any(swap_mask):
+            q25, q75 = q75.copy(), q25.copy()
+
+        x = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+        # --- Plotly figure ---
+        fig = go.Figure()
+
+        # Lower bound (q25) invisible anchor
+        fig.add_trace(go.Scatter(
+            x=x, y=q25,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip"
+        ))
+
+        # Upper bound (q75) filled to q25
+        fig.add_trace(go.Scatter(
+            x=x, y=q75,
+            mode="lines",
+            line=dict(width=0),
+            fill="tonexty",
+            name="25–75% band",
+            hoverinfo="skip"
+        ))
+
+        # Median line
+        fig.add_trace(go.Scatter(
+            x=x, y=df["median_flow"],
+            mode="lines+markers",
+            name="Median",
+            hoverinfo="skip"
+        ))
+
+        # --- Layout (mobile/static friendly) ---
+        fig.update_layout(
+            title=title,
+            xaxis_title="",
+            yaxis_title=y_title,
+            margin=dict(l=8, r=8, t=40, b=30),
+            height=280,
+            legend=dict(orientation="h", y=1.1, x=0),
+            hovermode=False,
+            plot_bgcolor="white",
+            paper_bgcolor="white"
+        )
+
+        fig.update_xaxes(fixedrange=True)
+        fig.update_yaxes(rangemode="tozero", fixedrange=True)
+
+        return fig
+
+    montly_flow_fig = monthly_flow_band_linear(month_summary_data)
+    montly_flow_fig.show()
+
     return
+
+
+@app.cell
+def _(day_data, mo, np, pd):
+    def fmt_cfs(x):
+        if pd.isna(x): return "—"
+        if x >= 1000:  return f"{x:,.0f}"
+        if x >= 100:   return f"{x:,.0f}"
+        if x >= 10:    return f"{x:,.1f}"
+        return f"{x:,.2f}"
+
+    def fmt_date(d):
+        return d.strftime("%Y-%m-%d") if pd.notna(d) else "—"
+
+    # --- Prepare data ---
+    df = day_data.copy()
+    df["dateTime"] = pd.to_datetime(df["dateTime"])
+    df = df.sort_values("dateTime").reset_index(drop=True)
+
+    if "has_data" not in df.columns:
+        df["has_data"] = df["mean_flow"].notna()
+    if "has_flow" not in df.columns:
+        df["has_flow"] = df["mean_flow"] > 0
+
+    df["year"]  = df["dateTime"].dt.year
+    df["month"] = df["dateTime"].dt.month
+
+    # =============================================================================
+    # 1) Top 10 Dry Streaks (missing data ends streak)
+    # =============================================================================
+    state = np.where(
+        df["has_data"] == False, -1,
+        np.where(df["has_flow"] == False, 1, 0)
+    )
+    state = pd.Series(state, index=df.index)
+    run_id = (state != state.shift()).cumsum()
+
+    dry_mask = (state == 1)
+    dry_rows = df.loc[dry_mask].assign(run=run_id[dry_mask].values)
+
+    if not dry_rows.empty:
+        dry_summary = (dry_rows.groupby("run")
+                                .agg(length=("dateTime", "size"),
+                                     start=("dateTime", "min"),
+                                     end=("dateTime", "max"))
+                                .reset_index(drop=True))
+        top10_dry = (dry_summary.sort_values(["length", "start"], ascending=[False, True])
+                               .head(10)
+                               .reset_index(drop=True))
+    else:
+        top10_dry = pd.DataFrame(columns=["length","start","end"])
+
+    # =============================================================================
+    # 2) Wettest & Driest Years (eligible = ≥1 data day each month)
+    # =============================================================================
+    data_days = df[df["has_data"]].copy()
+
+    ym_counts = (data_days.groupby(["year","month"])
+                            .size()
+                            .rename("days_with_data")
+                            .reset_index())
+
+    months_per_year = (ym_counts.assign(has_month=ym_counts["days_with_data"]>0)
+                                  .groupby("year")["has_month"].sum())
+
+    eligible_years = months_per_year[months_per_year>=12].index
+
+    annual_mean = (data_days[data_days["year"].isin(eligible_years)]
+                   .groupby("year")["mean_flow"]
+                   .mean()
+                   .sort_index())
+
+    if annual_mean.empty:
+        wettest = driest = pd.Series(dtype=float)
+    else:
+        wettest = annual_mean.sort_values(ascending=False).head(10)
+        driest  = annual_mean.sort_values(ascending=True).head(10)
+
+    # =============================================================================
+    # 3) Top 10 Daily Mean Flow Days
+    # =============================================================================
+    top10_flow = (
+        df.nlargest(10, "mean_flow")[["dateTime", "mean_flow"]]
+          .assign(date_str=lambda s: s["dateTime"].dt.strftime("%Y-%m-%d"))
+          .reset_index(drop=True)
+    )
+
+    # =============================================================================
+    # --- HTML Rendering
+    # =============================================================================
+    def make_dry_list_html():
+        if top10_dry.empty:
+            return "<li>No dry streaks found</li>"
+        return "".join(
+            f"<li><strong>{int(r.length)}</strong> days &nbsp; "
+            f"({fmt_date(r.start)} → {fmt_date(r.end)})</li>"
+            for r in top10_dry.itertuples(index=False)
+        )
+
+    def make_year_list_html(series):
+        if series.empty:
+            return "<li>No eligible years</li>"
+        return "".join(
+            f"<li><strong>{int(y)}</strong> — {fmt_cfs(v)} cfs</li>"
+            for y, v in series.items()
+        )
+
+    def make_flow_list_html():
+        return "".join(
+            f"<li>{r.date_str}: {fmt_cfs(r.mean_flow)} cfs</li>"
+            for r in top10_flow.itertuples(index=False)
+        )
+
+    html = f"""
+    <style>
+    .section {{ margin-bottom: 30px; }}
+    .top-list {{ margin: 12px 0 0 20px; padding: 0; }}
+    .top-list li {{ margin: 4px 0; }}
+    h3 {{ margin: 16px 0 6px 0; }}
+    </style>
+
+    <div class="section">
+      <h3>Top 10 Dry Streaks</h3>
+      <ol class="top-list">{make_dry_list_html()}</ol>
+    </div>
+
+    <div class="section">
+      <h3>Top 10 Wettest Years (annual mean, full coverage)</h3>
+      <ol class="top-list">{make_year_list_html(wettest)}</ol>
+    </div>
+
+    <div class="section">
+      <h3>Top 10 Driest Years (annual mean, full coverage)</h3>
+      <ol class="top-list">{make_year_list_html(driest)}</ol>
+    </div>
+
+    <div class="section">
+      <h3>Top 10 Daily Mean Flow Days</h3>
+      <ol class="top-list">{make_flow_list_html()}</ol>
+    </div>
+    """
+
+    # In Marimo:
+    mo.md(html)
+
+    return (df,)
 
 
 if __name__ == "__main__":
