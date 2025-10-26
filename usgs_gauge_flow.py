@@ -387,7 +387,7 @@ def _(go, mo, month_data, month_numbers, np, years):
 
 
 @app.cell
-def _(go, month_summary_data, np, pd):
+def _(go, mo, month_summary_data, np, pd):
     def monthly_flow_band_linear(
         month_summary_data: pd.DataFrame,
         y_title="Flow (cfs)",
@@ -459,7 +459,24 @@ def _(go, month_summary_data, np, pd):
         return fig
 
     montly_flow_fig = monthly_flow_band_linear(month_summary_data)
-    montly_flow_fig.show()
+
+    monthly_flow_tile = mo.ui.plotly(
+        montly_flow_fig,
+        config={
+            "displayModeBar": False,
+            "scrollZoom": False,
+            "doubleClick": False,
+            "staticPlot": True  # tooltips only
+        },
+    )
+
+    mo.md(
+        f"""
+        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
+        {monthly_flow_tile}
+        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
+        """
+    )
     return
 
 
