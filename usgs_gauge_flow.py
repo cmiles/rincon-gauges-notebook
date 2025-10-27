@@ -11,15 +11,15 @@ def _(mo):
     ## Greater Rincon Valley Area USGS Stream Gauges
 
     There are three USGS Stream gauges relevant for the Rincon Valley. This notebook shows two different stats:
-     - Days of Flow: For a frequently dry stream and often low flow streams like Rincon Creek the Days of Flow is the closest metric to answering the main question 'is there water'. This is shown as small multiples - it is interesting to see similiar years or groups of years.
-     - Mean Flow: For stream with steady flow the mean flow is more interesting that 'Days of Flow'. Two of the same chart are shown to make it easier to look at a variety of comparisons. The Y axis is logarythmic since the streams in the Rincon Valley area are generally low flow. 
+     - Days of Flow: For a frequently dry stream, and often low flow, streams like Rincon Creek the Days of Flow is the closest metric to answering 'when is there water'.
+     - Mean Flow: For stream with steady flow the mean flow is more interesting that 'Days of Flow'.
 
     Changing the dropdown below will show data for the selected gauge.
 
     [This link](https://maps.waterdata.usgs.gov/mapper/index.html) will take you to the National Water Information System 'Mapper' where you can zoom in and easily find gauges:
-      - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - located west of the X9 on Rincon Creek this gauge has data back into the 1950s and considering the area of Rincon Creek that is easily accessible today (ie the Arizona Trail crossing east of the Comino Loma Alta trailhead) is the best indication of 'is the creek flowing'
-      - [USGS 09484600 PANTANO WASH NEAR VAIL, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484600) - West of the areas that I believe most hikers use in Cienega Creek - this gauge may be misleading since as you hike east into Cienega Creek there is often surface water even if it is only dry sand at the bridge
-      - [USGS 09484550 CIENEGA CREEK NEAR SONOITA, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484550) - far south of the Rincon Valley portion of Cienega Creek but still interesting
+      - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - located west of the X9 Ranch on Rincon Creek this gauge has data back into the 1950s. This is the closest guage to the the Rincon Creek Arizona Trail crossing.
+      - [USGS 09484600 PANTANO WASH NEAR VAIL, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484600) - west of the areas that I believe most hikers use in Cienega Creek.
+      - [USGS 09484550 CIENEGA CREEK NEAR SONOITA, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484550) - well south of the Rincon Valley portion of Cienega Creek.
 
     The [Water Services Web](https://waterservices.usgs.gov/) page provides an overview of the data services available to retrieve data. Data in this report is from the Daily Values Service - [Daily Values Service Documentation](https://waterservices.usgs.gov/docs/dv-service/daily-values-service-details/), [Water Services URL Generation Tool](https://waterservices.usgs.gov/test-tools/?service=stat&siteType=&statTypeCd=all&major-filters=sites&format=rdb&date-type=type-period&statReportType=daily&statYearType=calendar&missingData=off&siteStatus=all&siteNameMatchOperator=start).
     """
@@ -363,6 +363,8 @@ def _(go, mo, month_data, month_numbers, np, years):
         height=total_height,
         paper_bgcolor="white",
         plot_bgcolor="white",
+        hovermode="x unified",
+        dragmode=False
     )
 
     heat_map_tile = mo.ui.plotly(
@@ -371,7 +373,7 @@ def _(go, mo, month_data, month_numbers, np, years):
             "displayModeBar": False,
             "scrollZoom": False,
             "doubleClick": False,
-            "staticPlot": True  # tooltips only
+            "staticPlot": False
         },
     )
 
@@ -468,6 +470,7 @@ def _(mo, month_summary_data, pd):
             height=280,
             legend=dict(orientation="h", y=1.1, x=0),
             hovermode="x unified",
+            dragmode=False,    
             plot_bgcolor="white",
             paper_bgcolor="white"
         )
