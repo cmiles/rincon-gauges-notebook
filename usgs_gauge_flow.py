@@ -387,26 +387,36 @@ def _(go, mo, month_data, month_numbers, np, years):
 
 
 @app.cell
-def _(go, mo, month_summary_data, np, pd):
+def _(mo, month_summary_data, pd):
     def monthly_flow_band_linear(
         month_summary_data: pd.DataFrame,
-        y_title="Flow (cfs)",
-        title="Monthly Flow — Median with 25–75% Band"
+        y_title="Flow (cfs)"
     ):
+        import numpy as np
+        import pandas as pd
+        import plotly.graph_objects as go
+
         # --- Keep only needed columns and ensure months 1–12 ---
         cols = ["month", "median_flow",
                 "twenty_five_quantile_flow", "seventy_five_quantile_flow"]
         df = month_summary_data[cols].copy()
+
         df["month"] = df["month"].astype(int)
         month_index = pd.Index(np.arange(1, 13), name="month")
         df = df.set_index("month").reindex(month_index).reset_index()
 
+        # ensure numeric (preserve NaN)
+        for c in ["median_flow", "twenty_five_quantile_flow", "seventy_five_quantile_flow"]:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
         # --- Handle swapped quantiles (rare but safe check) ---
         q25 = df["twenty_five_quantile_flow"].to_numpy(dtype=float)
         q75 = df["seventy_five_quantile_flow"].to_numpy(dtype=float)
-        swap_mask = q25 > q75
+        swap_mask = (q25 > q75) & np.isfinite(q25) & np.isfinite(q75)
         if np.any(swap_mask):
-            q25, q75 = q75.copy(), q25.copy()
+            tmp = q25.copy()
+            q25[swap_mask] = q75[swap_mask]
+            q75[swap_mask] = tmp[swap_mask]
 
         x = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
@@ -429,54 +439,66 @@ def _(go, mo, month_summary_data, np, pd):
             line=dict(width=0),
             fill="tonexty",
             name="25–75% band",
-            hoverinfo="skip"
+            hoverinfo="skip",
+            # optional: set a subtle fill if you want
+            # fillcolor="rgba(31,119,180,0.2)"
         ))
 
-        # Median line
+        # Median line (+ show band in tooltip via customdata)
+        custom = np.column_stack([q25, q75])
         fig.add_trace(go.Scatter(
             x=x, y=df["median_flow"],
             mode="lines+markers",
             name="Median",
-            hoverinfo="skip"
+            customdata=custom,
+            hovertemplate=(
+                "Month: %{x}<br>"
+                "Median: %{y:.2f} cfs<br>"
+                "25–75%: %{customdata[0]:.2f}–%{customdata[1]:.2f} cfs"
+                "<extra></extra>"
+            )
         ))
 
         # --- Layout (mobile/static friendly) ---
         fig.update_layout(
-            title=title,
+            title=None,
             xaxis_title="",
             yaxis_title=y_title,
             margin=dict(l=8, r=8, t=40, b=30),
             height=280,
             legend=dict(orientation="h", y=1.1, x=0),
-            hovermode=False,
+            hovermode="x unified",
             plot_bgcolor="white",
             paper_bgcolor="white"
         )
 
         fig.update_xaxes(fixedrange=True)
-        fig.update_yaxes(rangemode="tozero", fixedrange=True)
+        fig.update_yaxes(rangemode="tozero", fixedrange=True, tickformat="~s")  # 1.2k style
 
         return fig
 
-    montly_flow_fig = monthly_flow_band_linear(month_summary_data)
+    # --- Marimo tile ---
+    monthly_flow_fig = monthly_flow_band_linear(month_summary_data)
 
     monthly_flow_tile = mo.ui.plotly(
-        montly_flow_fig,
+        monthly_flow_fig,
         config={
             "displayModeBar": False,
             "scrollZoom": False,
-            "doubleClick": False,
-            "staticPlot": True  # tooltips only
+            "doubleClick": False,   # ok to disable double-click reset
+            "staticPlot": False     # keep interactivity for tooltips
         },
     )
 
     mo.md(
         f"""
+        <h2 style="text-align:center;">Monthly Flow - Median with 25-75% Band</h2>
         <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
         {monthly_flow_tile}
         <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
         """
     )
+
     return
 
 
@@ -508,6 +530,7 @@ def _(day_data, mo, np, pd):
     # =============================================================================
     # 1) Top 10 Dry Streaks (missing data ends streak)
     # =============================================================================
+    # state: -1 = missing data, 1 = dry (flow == 0), 0 = wet (flow > 0)
     state = np.where(
         df["has_data"] == False, -1,
         np.where(df["has_flow"] == False, 1, 0)
@@ -529,6 +552,24 @@ def _(day_data, mo, np, pd):
                                .reset_index(drop=True))
     else:
         top10_dry = pd.DataFrame(columns=["length","start","end"])
+
+    # =============================================================================
+    # 1b) Top 10 Wet Streaks (flow > 0; missing data ends streak)
+    # =============================================================================
+    wet_mask = (state == 0)
+    wet_rows = df.loc[wet_mask].assign(run=run_id[wet_mask].values)
+
+    if not wet_rows.empty:
+        wet_summary = (wet_rows.groupby("run")
+                                .agg(length=("dateTime", "size"),
+                                     start=("dateTime", "min"),
+                                     end=("dateTime", "max"))
+                                .reset_index(drop=True))
+        top10_wet = (wet_summary.sort_values(["length", "start"], ascending=[False, True])
+                               .head(10)
+                               .reset_index(drop=True))
+    else:
+        top10_wet = pd.DataFrame(columns=["length","start","end"])
 
     # =============================================================================
     # 2) Wettest & Driest Years (eligible = ≥1 data day each month)
@@ -577,6 +618,15 @@ def _(day_data, mo, np, pd):
             for r in top10_dry.itertuples(index=False)
         )
 
+    def make_wet_list_html():
+        if top10_wet.empty:
+            return "<li>No wet streaks found</li>"
+        return "".join(
+            f"<li><strong>{int(r.length)}</strong> days &nbsp; "
+            f"({fmt_date(r.start)} → {fmt_date(r.end)})</li>"
+            for r in top10_wet.itertuples(index=False)
+        )
+
     def make_year_list_html(series):
         if series.empty:
             return "<li>No eligible years</li>"
@@ -598,6 +648,11 @@ def _(day_data, mo, np, pd):
     .top-list li {{ margin: 4px 0; }}
     h3 {{ margin: 16px 0 6px 0; }}
     </style>
+
+    <div class="section">
+      <h3>Top 10 Wet Streaks</h3>
+      <ol class="top-list">{make_wet_list_html()}</ol>
+    </div>
 
     <div class="section">
       <h3>Top 10 Dry Streaks</h3>
@@ -622,6 +677,7 @@ def _(day_data, mo, np, pd):
 
     # In Marimo:
     mo.md(html)
+
     return
 
 
