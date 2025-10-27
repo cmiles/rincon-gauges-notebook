@@ -11,15 +11,15 @@ def _(mo):
     ## Greater Rincon Valley Area USGS Stream Gauges
 
     There are three USGS Stream gauges relevant for the Rincon Valley. This notebook shows two different stats:
-     - Days of Flow: For a frequently dry stream, and often low flow, streams like Rincon Creek the Days of Flow is the closest metric to answering 'when is there water'.
-     - Mean Flow: For stream with steady flow the mean flow is more interesting that 'Days of Flow'.
+     - Days of Flow: For frequently dry or low-flow streams like Rincon Creek, “Days of Flow” is the best metric for answering 'when is there water'.
+     - Mean Flow: For streams with steady flow, the mean flow is more informative than 'Days of Flow'.
 
-    Changing the dropdown below will show data for the selected gauge.
-
-    [This link](https://maps.waterdata.usgs.gov/mapper/index.html) will take you to the National Water Information System 'Mapper' where you can zoom in and easily find gauges:
-      - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - located west of the X9 Ranch on Rincon Creek this gauge has data back into the 1950s. This is the closest guage to the the Rincon Creek Arizona Trail crossing.
+    Use the dropdown below to view data for one of the gauges below:
+      - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - west of the X9 Ranch on Rincon Creek this gauge has data back into the 1950s. This is the closest guage to the the Rincon Creek Arizona Trail crossing.
       - [USGS 09484600 PANTANO WASH NEAR VAIL, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484600) - west of the areas that I believe most hikers use in Cienega Creek.
       - [USGS 09484550 CIENEGA CREEK NEAR SONOITA, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484550) - well south of the Rincon Valley portion of Cienega Creek.
+
+    [This link](https://maps.waterdata.usgs.gov/mapper/index.html) will take you to the National Water Information System 'Mapper' where you can zoom in and easily find gauges.
 
     The [Water Services Web](https://waterservices.usgs.gov/) page provides an overview of the data services available to retrieve data. Data in this report is from the Daily Values Service - [Daily Values Service Documentation](https://waterservices.usgs.gov/docs/dv-service/daily-values-service-details/), [Water Services URL Generation Tool](https://waterservices.usgs.gov/test-tools/?service=stat&siteType=&statTypeCd=all&major-filters=sites&format=rdb&date-type=type-period&statReportType=daily&statYearType=calendar&missingData=off&siteStatus=all&siteNameMatchOperator=start).
     """
@@ -337,7 +337,16 @@ def _(go, mo, month_data, month_numbers, np, years):
                 "Month: %{x}<br>"
                 "max_mean_flow: %{text}<extra></extra>"
             ),
-            colorbar=dict(title="log₁₀"),
+            colorbar=dict(
+                title="log₁₀",
+                orientation="h",
+                x=0.5,
+                xanchor="center",
+                y=1.02,
+                yanchor="bottom",
+                len=0.8,
+                thickness=15
+            ),
             showscale=True,
             hoverongaps=False
         )
@@ -359,7 +368,7 @@ def _(go, mo, month_data, month_numbers, np, years):
             tickvals=mmf.index,
             ticktext=mmf.index.astype(str),
         ),
-        margin=dict(l=4, r=4, t=10, b=10),
+        margin=dict(l=4, r=4, t=2, b=10),
         height=total_height,
         paper_bgcolor="white",
         plot_bgcolor="white",
