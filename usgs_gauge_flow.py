@@ -8,18 +8,34 @@ app = marimo.App(width="full", app_title="Rincon Valley USGS Gauges")
 def _(mo):
     mo.md(
         r"""
-    ## Greater Rincon Valley Area USGS Stream Gauges
+    ## Tucson Area USGS Stream Gauges
 
-    There are three USGS Stream gauges relevant for the Rincon Valley. This notebook shows two different stats:
-     - Days of Flow: For frequently dry or low-flow streams like Rincon Creek, “Days of Flow” is the best metric for answering 'when is there water'.
-     - Mean Flow: For streams with steady flow, the mean flow is more informative than 'Days of Flow'.
+    This notebook shows several stats based on Daily Mean Flow values for USGS Stream Gauges in the Tucson Area.
+     - Days of Flow: For frequently dry or low-flow streams “Days of Flow > 0” is the interesting metric for answering 'when is there water' - useful for a number of Tucson area streams.
+     - Monthly Flow: Monthly means from the available data.
+     - Max Daily Mean Flow by Month: Maximum daily means for years/months.
+     - Wet/Dry Streaks: Based both on continuous > 0 mean flow AND continuous days of data (missing data will break the streak).
+     - Wettest/Dryest Years: Based on mean flow for the year.
+     - Top 10 Daily Mean Flow Days: Top 10 days based on mean flow.
 
     Use the dropdown below to view data for one of the gauges below:
-      - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - west of the X9 Ranch on Rincon Creek this gauge has data back into the 1950s. This is the closest guage to the the Rincon Creek Arizona Trail crossing.
-      - [USGS 09484600 PANTANO WASH NEAR VAIL, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484600) - west of the areas that I believe most hikers use in Cienega Creek.
-      - [USGS 09484550 CIENEGA CREEK NEAR SONOITA, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484550) - well south of the Rincon Valley portion of Cienega Creek.
+      - [USGS 09484580 BARREL CANYON NEAR SONOITA, AZ](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484580) - 83 and Barrel Canyon
+      - [USGS 09484201 BEAR CREEK ABOVE BEAR CANYON ROAD, NEAR TUCSON, AZ](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484201) - South of the Bear Canyon Trail 
+      - [USGS 09486350 CANADA DEL ORO BLW INA ROAD, NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09486350)
+      - [USGS 09484550 CIENEGA CREEK NEAR SONOITA, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484550) - Hilton Ranch Road/Wood Canyon Area
+      - [USGS 09484600 PANTANO WASH NEAR VAIL, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484600) - East of Colossal Cave Road, West of Agua Verde Creek
+      - [USGS 09485700 RILLITO CREEK AT DODGE BOULEVARD, AT TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485700)
+      - [USGS 09486055 RILLITO CREEK AT LA CHOLLA BLVD NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09486055)
+      - [USGS 09485000 RINCON CREEK NEAR TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09485000) - East of the Arizona Trail Crossing
+      - [USGS 09484000 SABINO CREEK NEAR TUCSON, AZ](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484000) - Sabino Dam
+      - [USGS 09472050 SAN PEDRO R AT REDINGTON BRIDGE NR REDINGTON, AZ](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09472050)
+      - [USGS 09482500 SANTA CRUZ RIVER AT TUCSON, AZ](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09482500)
+      - [USGS 09482495 SANTA CRUZ RIVER AT MISSION LANE GCS AT TUCSON, AZ](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09482495)
+      - [USGS 09482490 SANTA CRUZ RIVER AT STARR PASS GCS AT TUCSON AZ](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09482490)
+      - [USGS 09482440 SANTA CRUZ RIVER AT SILVERLAKE RD, AT TUCSON, AZ](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09482440)
+      - [USGS 09484500 TANQUE VERDE CREEK AT TUCSON, AZ.](https://waterdata.usgs.gov/nwis/inventory?agency_code=USGS&site_no=09484500) - Sabino Canyon Road and Tanque Verde Creek
 
-    [This link](https://maps.waterdata.usgs.gov/mapper/index.html) will take you to the National Water Information System 'Mapper' where you can zoom in and easily find gauges.
+    The [National Water Information System 'Mapper'](https://maps.waterdata.usgs.gov/mapper/index.html) page shows a map of the USGS Gauges.
 
     The [Water Services Web](https://waterservices.usgs.gov/) page provides an overview of the data services available to retrieve data. Data in this report is from the Daily Values Service - [Daily Values Service Documentation](https://waterservices.usgs.gov/docs/dv-service/daily-values-service-details/), [Water Services URL Generation Tool](https://waterservices.usgs.gov/test-tools/?service=stat&siteType=&statTypeCd=all&major-filters=sites&format=rdb&date-type=type-period&statReportType=daily&statYearType=calendar&missingData=off&siteStatus=all&siteNameMatchOperator=start).
     """
@@ -38,8 +54,20 @@ def _():
     site_dropdown = mo.ui.dropdown(
         options=[
             "Rincon Creek -- 09485000",
+            "Sabino Creek Near Tucson-- 09484000",
+            "Bear Creek Above Bear Canyon Road -- 09484201",
             "Pantano Wash Near Vail -- 09484600",
             "Cienega Creek Near Sonoita -- 09484550",
+            "Tanque Verde Creek at Tucson -- 09484500",
+            "Rillito Creek at Dodge Boulevard at Tucson -- 09485700",
+            "San Pedro R at Redington Bridge nr Redington -- 09472050",
+            "Barrel Canyon Near Sonoita -- 09484580",
+            "Rillito Creek at La Cholla Blvd Near Tucson -- 09486055",
+            "Canada Del Oro Blw Ina Road, Near Tucson -- 09486350",
+            "Santa Cruz River at Tucson -- 09482500",
+            "Santa Cruz River at Mission Lane GCS at Tucson -- 09482495",
+            "Santa Cruz River at Starr Pass GCS at Tucson AZ -- 09482490",
+            "Santa Cruz River at Silverlake Rd, at Tucson -- 09482440",
         ],
         value="Rincon Creek -- 09485000",
         label="Select USGS Site"
@@ -300,104 +328,6 @@ def _(mo, month_data, np):
 
 
 @app.cell
-def _(go, mo, month_data, month_numbers, np, years):
-    # --- Pivot just what you need ---
-    mmf = (
-        month_data.pivot_table(
-            index="year",
-            columns="month",
-            values="max_mean_flow",
-            aggfunc="mean",
-        )
-        .reindex(index=years)                       # keep years in desired order
-        .reindex(columns=month_numbers)             # ensure months 1..12
-    )
-
-    # --- Log transform; NaNs stay NaN and will render as gaps/transparent ---
-    z_logged = np.log10(mmf + 1)
-
-    # --- Hover text: "No Data" for NaN, else value with 2 decimals ---
-    heat_hover_text = (
-        mmf.round(2)
-           .astype(object)                          # allow mixing floats and strings
-           .where(~mmf.isna(), "No Data")
-    )
-
-    month_labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=z_logged.to_numpy(),
-            x=month_labels,
-            y=mmf.index.astype(str),
-            colorscale="PuBu",
-            text=heat_hover_text.to_numpy(),
-            hovertemplate=(
-                "Year: %{y}<br>"
-                "Month: %{x}<br>"
-                "max_mean_flow: %{text}<extra></extra>"
-            ),
-            colorbar=dict(
-                title="log₁₀",
-                orientation="h",
-                x=0.5,
-                xanchor="center",
-                y=1.02,
-                yanchor="bottom",
-                len=0.8,
-                thickness=15
-            ),
-            showscale=True,
-            hoverongaps=False
-        )
-    )
-
-    # Size per year for mobile
-    row_height = 20
-    total_height = max(400, len(mmf.index) * row_height)
-
-    fig.update_layout(
-        title="",
-        xaxis=dict(title="", fixedrange=True, showgrid=False),
-        yaxis=dict(
-            title="",
-            autorange="reversed",
-            fixedrange=True,
-            showgrid=False,
-            tickmode="array",
-            tickvals=mmf.index,
-            ticktext=mmf.index.astype(str),
-        ),
-        margin=dict(l=4, r=4, t=2, b=10),
-        height=total_height,
-        paper_bgcolor="white",
-        plot_bgcolor="white",
-        hovermode="x unified",
-        dragmode=False
-    )
-
-    heat_map_tile = mo.ui.plotly(
-        fig,
-        config={
-            "displayModeBar": False,
-            "scrollZoom": False,
-            "doubleClick": False,
-            "staticPlot": False
-        },
-    )
-
-    mo.md(
-        f"""
-        <h2 style="text-align:center;">Max Daily Mean Flow by Year and Month</h2>
-        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
-        {heat_map_tile}
-        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
-        """
-    )
-    return
-
-
-@app.cell
 def _(mo, month_summary_data, pd):
     def monthly_flow_band_linear(
         month_summary_data: pd.DataFrame,
@@ -510,7 +440,104 @@ def _(mo, month_summary_data, pd):
         <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
         """
     )
+    return
 
+
+@app.cell
+def _(go, mo, month_data, month_numbers, np, years):
+    # --- Pivot just what you need ---
+    mmf = (
+        month_data.pivot_table(
+            index="year",
+            columns="month",
+            values="max_mean_flow",
+            aggfunc="mean",
+        )
+        .reindex(index=years)                       # keep years in desired order
+        .reindex(columns=month_numbers)             # ensure months 1..12
+    )
+
+    # --- Log transform; NaNs stay NaN and will render as gaps/transparent ---
+    z_logged = np.log10(mmf + 1)
+
+    # --- Hover text: "No Data" for NaN, else value with 2 decimals ---
+    heat_hover_text = (
+        mmf.round(2)
+           .astype(object)                          # allow mixing floats and strings
+           .where(~mmf.isna(), "No Data")
+    )
+
+    month_labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=z_logged.to_numpy(),
+            x=month_labels,
+            y=mmf.index.astype(str),
+            colorscale="PuBu",
+            text=heat_hover_text.to_numpy(),
+            hovertemplate=(
+                "Year: %{y}<br>"
+                "Month: %{x}<br>"
+                "max_mean_flow: %{text}<extra></extra>"
+            ),
+            colorbar=dict(
+                title="log₁₀",
+                orientation="h",
+                x=0.5,
+                xanchor="center",
+                y=1.02,
+                yanchor="bottom",
+                len=0.8,
+                thickness=15
+            ),
+            showscale=True,
+            hoverongaps=False
+        )
+    )
+
+    # Size per year for mobile
+    row_height = 20
+    total_height = max(400, len(mmf.index) * row_height)
+
+    fig.update_layout(
+        title="",
+        xaxis=dict(title="", fixedrange=True, showgrid=False),
+        yaxis=dict(
+            title="",
+            autorange="reversed",
+            fixedrange=True,
+            showgrid=False,
+            tickmode="array",
+            tickvals=mmf.index,
+            ticktext=mmf.index.astype(str),
+        ),
+        margin=dict(l=4, r=4, t=2, b=10),
+        height=total_height,
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+        hovermode="x unified",
+        dragmode=False
+    )
+
+    heat_map_tile = mo.ui.plotly(
+        fig,
+        config={
+            "displayModeBar": False,
+            "scrollZoom": False,
+            "doubleClick": False,
+            "staticPlot": False
+        },
+    )
+
+    mo.md(
+        f"""
+        <h2 style="text-align:center;">Max Daily Mean Flow by Month</h2>
+        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
+        {heat_map_tile}
+        <hr style="width:100%; border:none; border-top:1px solid #ddd; margin:30px 0;">
+        """
+    )
     return
 
 
@@ -689,7 +716,6 @@ def _(day_data, mo, np, pd):
 
     # In Marimo:
     mo.md(html)
-
     return
 
 
